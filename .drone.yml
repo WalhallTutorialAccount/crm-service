@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:9.6
+    environment:
+      - POSTGRES_DB=blueprint
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+
+pipeline:
+
+  test:
+    image: python:3.6-alpine3.7
+    commands:
+      - apk add --no-cache postgresql-libs bash nginx
+      - apk add --no-cache --virtual .build-deps git python-dev gcc musl-dev postgresql-dev libffi-dev libressl-dev
+      - pip install pip --upgrade
+      - pip install -r requirements/ci.txt
+      - bash scripts/tcp-port-wait.sh postgres 5432
+      - pytest -v
+
+    environment:
+      DATABASE_ENGINE: "postgresql"
+      DATABASE_NAME: "crm_flask_service"
+      DATABASE_USER: "root"
+      DATABASE_PASSWORD: "root"
+      DATABASE_HOST: "postgres_crm_flask_service"
+      DATABASE_PORT: "5432"
+    when:
+      event: [pull_request, push, tag]
+
+  build-docker-image-tag:
+    image: plugins/docker
+    registry:
+      from_secret: DOCKER_REGISTRY
+    repo:
+      from_secret: DOCKER_REPO
+    username:
+      from_secret: DOCKER_USERNAME
+    password:
+      from_secret: DOCKER_PASSWORD
+    auto_tag: true
+    insecure: true
+    file: Dockerfile
+    when:
+      event: [push, tag]
+      status: [success]

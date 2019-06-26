@@ -1,0 +1,45 @@
+version: "3.1"
+
+services:
+
+  postgres_crm_flask_service:
+    container_name: postgres_app_service
+    healthcheck:
+      test: "pg_isready -h localhost -p 5432 -q -U postgres"
+      interval: 3s
+      timeout: 5s
+      retries: 5
+    image: postgres:10.4-alpine
+    environment:
+      POSTGRES_DB: crm_flask_service
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    volumes:
+      - /var/lib/postgresql/data/
+    restart: always
+
+  crm_flask_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: bash /code/scripts/docker-entrypoint.sh
+    container_name: crm_flask_service
+    image: crm_flask_service
+    volumes:
+      - .:/code
+    ports:
+      - "8089:8080"
+    depends_on:
+      - postgres_crm_flask_service
+    environment:
+      DATABASE_ENGINE: "postgresql"
+      DATABASE_NAME: "crm_flask_service"
+      DATABASE_USER: "root"
+      DATABASE_PASSWORD: "root"
+      DATABASE_HOST: "postgres_crm_flask_service"
+      DATABASE_PORT: "5432"
+      JWT_PUBLIC_KEY_RSA_BIFROST: |-
+        -----BEGIN PUBLIC KEY-----
+        MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBALFc9NFZaOaSwUMPNektbtJqEjYZ6IRB
+        qhqvJu1hKPYn9HYd75c0gIDYHJ9lb7QwQvg44aO27104rDK0xSstzL0CAwEAAQ==
+        -----END PUBLIC KEY-----
